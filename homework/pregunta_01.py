@@ -71,3 +71,61 @@ def pregunta_01():
 
 
     """
+    import os
+    import shutil
+    import zipfile
+    import pandas as pd
+    from glob import glob
+
+    # Extracción y preparación del archivo comprimido
+    ubicacion_archivo_zip = "files/input.zip"
+    directorio_extraccion = "input"
+
+    # Eliminar directorio previo si existe
+    if os.path.exists(directorio_extraccion):
+        shutil.rmtree(directorio_extraccion)
+
+    # Extraer contenido del ZIP
+    with zipfile.ZipFile(ubicacion_archivo_zip, "r") as extractor_zip:
+        extractor_zip.extractall(".")
+
+    # Preparación del espacio de trabajo
+    os.makedirs("files/output", exist_ok=True)
+
+    # Motor de procesamiento de textos y sentimientos
+    def construir_dataset_desde_directorio(modalidad_entrenamiento):
+        """Genera DataFrame a partir de archivos de texto organizados por sentimiento"""
+        ruta_conjunto_datos = os.path.join(directorio_extraccion, modalidad_entrenamiento)
+        coleccion_registros = []
+        
+        # Procesar cada categoría emocional
+        for categoria_emocional in ["positive", "negative", "neutral"]:
+            directorio_categoria = os.path.join(ruta_conjunto_datos, categoria_emocional)
+            
+            # Leer archivos ordenados alfabéticamente
+            for nombre_documento in sorted(os.listdir(directorio_categoria)):
+                ruta_completa_archivo = os.path.join(directorio_categoria, nombre_documento)
+                
+                # Extraer contenido textual
+                with open(ruta_completa_archivo, encoding="utf-8") as manipulador_archivo:
+                    contenido_textual = manipulador_archivo.read().strip()
+                    
+                    # Agregar registro estructurado
+                    coleccion_registros.append({
+                        "phrase": contenido_textual,
+                        "target": categoria_emocional
+                    })
+        
+        return pd.DataFrame(coleccion_registros)
+
+    # Generación y almacenamiento de datasets finales
+    dataframe_entrenamiento = construir_dataset_desde_directorio("train")
+    dataframe_evaluacion = construir_dataset_desde_directorio("test")
+
+    # Exportar datasets como archivos CSV
+    dataframe_entrenamiento.to_csv(os.path.join("files/output", "train_dataset.csv"), index=False)
+    dataframe_evaluacion.to_csv(os.path.join("files/output", "test_dataset.csv"), index=False)
+
+# Punto de entrada principal del laboratorio
+if __name__ == "__main__":
+    pregunta_01()
